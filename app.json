@@ -1,14 +1,12 @@
 {
   "expo": {
-    "name": "expense_app",
-    "slug": "expense_app",
+    "name": "Paisa Tracker",
+    "slug": "paisa-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "ios": {
-      "supportsTablet": true
-    },
+    "userInterfaceStyle": "automatic",
+    "ios": {},
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -16,10 +14,33 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.pushk.paisatracker",
+      "permissions": [
+        "RECEIVE_SMS",
+        "READ_SMS",
+        "POST_NOTIFICATIONS",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#2F6FED"
+        }
+      ],
+      "expo-background-task"
+    ],
+    "scheme": "paisatracker",
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }

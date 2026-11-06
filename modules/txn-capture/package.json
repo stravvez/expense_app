@@ -1,0 +1,7 @@
+{
+  "name": "txn-capture",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "description": "Captures bank SMS and payment-app notifications into a persistent native queue"
+}
