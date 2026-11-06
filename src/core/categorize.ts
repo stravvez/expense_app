@@ -2,18 +2,18 @@ export type DefaultCategory = { key: string; name: string; icon: string; color: 
 
 /** Seeded on first run. `key` is stable; names can be renamed by the user. */
 export const DEFAULT_CATEGORIES: DefaultCategory[] = [
-  { key: 'food', name: 'Food & Dining', icon: '🍔', color: '#E8590C' },
-  { key: 'groceries', name: 'Groceries', icon: '🛒', color: '#2B8A3E' },
-  { key: 'transport', name: 'Transport', icon: '🚕', color: '#1971C2' },
-  { key: 'shopping', name: 'Shopping', icon: '🛍️', color: '#C2255C' },
-  { key: 'entertainment', name: 'Entertainment', icon: '🎬', color: '#7048E8' },
-  { key: 'bills', name: 'Bills & Recharge', icon: '💡', color: '#E67700' },
-  { key: 'health', name: 'Health', icon: '💊', color: '#0C8599' },
-  { key: 'education', name: 'Education', icon: '📚', color: '#5C940D' },
-  { key: 'travel', name: 'Travel', icon: '✈️', color: '#364FC7' },
-  { key: 'rent', name: 'Rent & Home', icon: '🏠', color: '#862E9C' },
-  { key: 'transfers', name: 'Transfers to people', icon: '👥', color: '#495057' },
-  { key: 'other', name: 'Other', icon: '📦', color: '#868E96' },
+  { key: 'food', name: 'Food & Dining', icon: '🍔', color: '#eb6834' },
+  { key: 'groceries', name: 'Groceries', icon: '🛒', color: '#008300' },
+  { key: 'transport', name: 'Transport', icon: '🚕', color: '#2a78d6' },
+  { key: 'shopping', name: 'Shopping', icon: '🛍️', color: '#e87ba4' },
+  { key: 'entertainment', name: 'Entertainment', icon: '🎬', color: '#6250d6' },
+  { key: 'bills', name: 'Bills & Recharge', icon: '💡', color: '#eda100' },
+  { key: 'health', name: 'Health', icon: '💊', color: '#1baf7a' },
+  { key: 'education', name: 'Education', icon: '📚', color: '#8a8984' },
+  { key: 'travel', name: 'Travel', icon: '✈️', color: '#e34948' },
+  { key: 'rent', name: 'Rent & Home', icon: '🏠', color: '#8a8984' },
+  { key: 'transfers', name: 'Transfers to people', icon: '👥', color: '#8a8984' },
+  { key: 'other', name: 'Other', icon: '📦', color: '#8a8984' },
 ];
 
 /** keyword (matched against normalised counterparty + vpa) → category key */
