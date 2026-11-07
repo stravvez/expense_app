@@ -26,6 +26,8 @@ const VPA = /\b([a-z0-9][a-z0-9.\-_]{1,63}@[a-z][a-z0-9]{1,30})\b/i;
 const DEBIT = /\b(debited|debit(?:ed)?\s+(?:for|by|with)|withdrawn|spent|paid|sent|dr\.?)\b/i;
 const CREDIT = /\b(credited|credit(?:ed)?\s+(?:for|by|with)|received|deposited|cr\.?)\b/i;
 
+const SAFETY_FOOTER = /\b(?:never|do not|don'?t|pls do not|please do not)\s+share\b[^.\-]*|\bnot\s+(?:you|u)\s*\?[^.]*/gi;
+
 const IGNORE: [RegExp, string][] = [
   [/\b(otp|one[\s-]?time\s+password|verification code)\b/i, 'otp'],
   [/\b(will be debited|due (?:on|by|date)|is due|auto[\s-]?pay.*(?:scheduled|registered)|mandate)\b/i, 'upcoming'],
@@ -61,7 +63,10 @@ export function parseBankSms(sender: string, body: string, ts: number): ParseRes
   if (!isBankSender(sender)) return { kind: 'ignored', reason: 'sender' };
   const text = body.replace(/\s+/g, ' ').trim();
 
-  for (const [re, reason] of IGNORE) if (re.test(text)) return { kind: 'ignored', reason };
+  // Banks append safety footers like "Never Share OTP/PIN/CVV" to real alerts; don't let them
+  // trip the OTP/promo filters.
+  const screened = text.replace(SAFETY_FOOTER, ' ');
+  for (const [re, reason] of IGNORE) if (re.test(screened)) return { kind: 'ignored', reason };
 
   const amt = text.match(AMOUNT);
   const isDebit = DEBIT.test(text);

@@ -8,6 +8,13 @@ const T = 1_762_400_000_000;
  * from your phone here — the Settings → "Needs review" screen shows any message that didn't parse.
  */
 describe('Union Bank SMS', () => {
+  it('does not mistake the "Never Share OTP" footer for an OTP message', () => {
+    const r = parseBankSms('JM-UNIONB-S', 'A/c *6790 Credited for Rs:70.00 on 01-11-2026 18:42:32 by Mob Bk ref no 630512345678 Avl Bal Rs:2937.65.Never Share OTP/PIN/CVV-Union Bank of India', T);
+    expect(r).toMatchObject({ kind: 'txn', txn: { amountPaise: 7000, direction: 'credit', upiRef: '630512345678', balancePaise: 293765 } });
+  });
+  it('still ignores real OTP messages', () => {
+    expect(parseBankSms('JM-UNIONB-S', '123456 is your OTP for UPI PIN reset on A/c *6790. Do not share it with anyone -Union Bank of India', T).kind).toBe('ignored');
+  });
   it('parses the short "Dr ... by MB ... Fv." format', () => {
     const r = parseBankSms('JK-UNIONB-S', 'Union Bank of India A/c*6790 Dr Rs900.00 on 05-11-26 13:35 by MB 630912345678 Fv.Redbu, Bal Rs974.65 Not U?Call 18002082244/SMS BLOCK 6790 to 9223008486', T);
     expect(r.kind).toBe('txn');

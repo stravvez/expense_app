@@ -7,7 +7,7 @@ import { AppState } from 'react-native';
 import TxnCapture from '../../modules/txn-capture';
 import { setupAlerts } from '../capture/alerts';
 import { registerDrainTask } from '../capture/backgroundTask'; // also defines the task in global scope
-import { drainNativeQueue } from '../capture/pipeline';
+import { drainNativeQueue, reparseSkipped } from '../capture/pipeline';
 import { getMeta } from '../db/repo';
 import { DB_NAME, migrate } from '../db/schema';
 import { useApp } from '../state/store';
@@ -35,6 +35,9 @@ function CaptureBridge() {
 
     setupAlerts().catch(() => {});
     registerDrainTask().catch((e) => console.warn('bg task', e));
+    reparseSkipped(db)
+      .then((s) => s && (s.inserted.length || s.merged) && bump())
+      .catch((e) => console.warn('reparse failed', e));
     drain();
 
     const sub = TxnCapture?.addListener('onCaptured', drain);

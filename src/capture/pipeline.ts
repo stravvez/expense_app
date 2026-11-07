@@ -4,7 +4,7 @@ import { categorize } from '../core/categorize';
 import { decideMerge } from '../core/merge';
 import { parseCapture } from '../core/parsers';
 import type { TxnRow } from '../core/types';
-import { insertRaw, insertTxn, listRules, mergeCandidates, patchTxn, setRawStatus, setMeta } from '../db/repo';
+import { getMeta, insertRaw, insertTxn, listRules, mergeCandidates, patchTxn, setRawStatus, setMeta } from '../db/repo';
 import { alertNewTransactions } from './alerts';
 
 function hash(s: string) {
@@ -28,12 +28,18 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
   return next;
 }
 
-async function processOne(db: SQLiteDatabase, c: RawCapture, rules: Awaited<ReturnType<typeof listRules>>, stats: ProcessStats) {
+type Rules = Awaited<ReturnType<typeof listRules>>;
+
+async function processOne(db: SQLiteDatabase, c: RawCapture, rules: Rules, stats: ProcessStats) {
   const rawId = await insertRaw(db, { ...c, key: captureKey(c) });
   if (rawId == null) {
     stats.duplicates++;
     return;
   }
+  return handleRaw(db, rawId, c, rules, stats);
+}
+
+async function handleRaw(db: SQLiteDatabase, rawId: number, c: Pick<RawCapture, 'source' | 'sender' | 'body' | 'ts'>, rules: Rules, stats: ProcessStats) {
   const res = parseCapture(c.source, c.sender, c.body, c.ts);
   if (res.kind === 'ignored') {
     stats.ignored++;
@@ -84,6 +90,32 @@ export function processCaptures(db: SQLiteDatabase, captures: RawCapture[]): Pro
         console.warn('capture processing failed', e);
       }
     }
+    return stats;
+  });
+}
+
+/**
+ * Bump when a parser change can turn previously skipped messages into transactions.
+ * On the next launch, raw events marked ignored/unparsed are parsed again.
+ */
+export const PARSER_VERSION = 2;
+
+export function reparseSkipped(db: SQLiteDatabase): Promise<ProcessStats | null> {
+  return serial(async () => {
+    if ((await getMeta(db, 'parser_version')) === String(PARSER_VERSION)) return null;
+    const stats: ProcessStats = { inserted: [], merged: 0, duplicates: 0, ignored: 0, unparsed: 0 };
+    const rows = await db.getAllAsync<{ id: number; source: RawCapture['source']; sender: string; body: string; ts: number }>(
+      "SELECT id, source, sender, body, ts FROM raw_events WHERE status IN ('ignored', 'unparsed') ORDER BY ts"
+    );
+    const rules = await listRules(db);
+    for (const r of rows) {
+      try {
+        await handleRaw(db, r.id, r, rules, stats);
+      } catch (e) {
+        console.warn('reparse failed', e);
+      }
+    }
+    await setMeta(db, 'parser_version', String(PARSER_VERSION));
     return stats;
   });
 }
