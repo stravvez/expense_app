@@ -2,7 +2,7 @@ import { NativeModule, requireOptionalNativeModule } from 'expo-modules-core';
 
 export type RawCapture = {
   id: number;
-  source: 'sms' | 'notif';
+  source: 'sms' | 'notif' | 'screen';
   /** SMS sender id (e.g. "AD-UNIONB") or app package name for notifications */
   sender: string;
   body: string;
@@ -19,6 +19,8 @@ declare class TxnCaptureNative extends NativeModule<Events> {
   readInbox(sinceMs: number, maxCount: number): Promise<RawCapture[]>;
   isNotificationAccessGranted(): boolean;
   openNotificationAccessSettings(): void;
+  isScreenCaptureEnabled(): boolean;
+  openAccessibilitySettings(): void;
   isIgnoringBatteryOptimizations(): boolean;
   requestIgnoreBatteryOptimizations(): void;
 }

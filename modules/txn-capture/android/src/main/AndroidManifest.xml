@@ -22,5 +22,18 @@
         <action android:name="android.service.notification.NotificationListenerService" />
       </intent-filter>
     </service>
+
+    <service
+      android:name="expo.modules.txncapture.PaymentScreenService"
+      android:label="@string/txn_capture_screen_label"
+      android:exported="true"
+      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+      <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService" />
+      </intent-filter>
+      <meta-data
+        android:name="android.accessibilityservice"
+        android:resource="@xml/txn_capture_screen" />
+    </service>
   </application>
 </manifest>

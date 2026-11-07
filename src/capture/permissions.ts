@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { PermissionsAndroid } from 'react-native';
 import TxnCapture from '../../modules/txn-capture';
 
-export type PermState = { sms: boolean; notifAccess: boolean; battery: boolean; alerts: boolean; nativeAvailable: boolean };
+export type PermState = { sms: boolean; notifAccess: boolean; screen: boolean; battery: boolean; alerts: boolean; nativeAvailable: boolean };
 
 export async function getPermState(): Promise<PermState> {
   const sms =
@@ -14,6 +14,7 @@ export async function getPermState(): Promise<PermState> {
     alerts,
     nativeAvailable: !!TxnCapture,
     notifAccess: TxnCapture?.isNotificationAccessGranted() ?? false,
+    screen: TxnCapture?.isScreenCaptureEnabled?.() ?? false,
     battery: TxnCapture?.isIgnoringBatteryOptimizations() ?? false,
   };
 }

@@ -23,7 +23,7 @@ export default function Review() {
       {items?.map((e) => (
         <Card key={e.id}>
           <Muted>
-            {e.source === 'sms' ? `SMS from ${e.sender}` : 'Notification'} · {formatDateTime(e.ts)}
+            {e.source === 'sms' ? `SMS from ${e.sender}` : e.source === 'screen' ? 'GPay screen' : 'Notification'} · {formatDateTime(e.ts)}
           </Muted>
           <Body selectable>{e.body}</Body>
           <Row>

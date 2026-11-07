@@ -83,6 +83,18 @@ class TxnCaptureModule : Module() {
       context.startActivity(intent)
     }
 
+    Function("isScreenCaptureEnabled") {
+      val flat = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
+      val me = ComponentName(context, PaymentScreenService::class.java)
+      flat.split(":").any { ComponentName.unflattenFromString(it) == me }
+    }
+
+    Function("openAccessibilitySettings") {
+      val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(intent)
+    }
+
     Function("isIgnoringBatteryOptimizations") {
       val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
       pm.isIgnoringBatteryOptimizations(context.packageName)

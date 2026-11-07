@@ -9,11 +9,12 @@ transaction, assigns a category, and keeps everything on the phone in SQLite.
 ```
 SMS_RECEIVED ─┐                                ┌─ live: onCaptured event → drain (app alive)
               ├─▶ native queue (SQLite, Kotlin)┼─ app resume → drain
-GPay notif ───┘   modules/txn-capture          └─ background task (~15 min) → drain + alert
+GPay notif ───┤   modules/txn-capture
+GPay screen ──┘   (accessibility, GPay only)          └─ background task (~15 min) → drain + alert
                                    drain → parse → merge (UPI ref / amount±5min) → categorize → save
 ```
 
-- `modules/txn-capture/` is a local Expo module in Kotlin: an SMS receiver, a notification listener, a durable queue and an inbox reader
+- `modules/txn-capture/` is a local Expo module in Kotlin: an SMS receiver, a notification listener, an accessibility service that reads only GPay’s payment-successful and payment-details screens, a durable queue and an inbox reader
 - `src/core/` holds the pure, unit-tested logic: parsers, merge, categorizer, splits/balances
 - `src/capture/pipeline.ts` drains the queue, backfills from the inbox and is idempotent (re-runs are safe)
 - `src/app/` holds the screens (expo-router)
@@ -29,7 +30,7 @@ npx eas-cli@latest build -p android --profile development && npm start
 ```
 
 Install the APK on your phone. On first launch the setup screen walks you through:
-SMS permission → Notification access → battery exemption → alert permission → importing past months.
+SMS permission → Notification access → GPay screen reading (Accessibility) → battery exemption → alert permission → importing past months.
 On Xiaomi/Oppo/Vivo/Realme phones, also turn on **Autostart** for the app.
 
 ## Checks

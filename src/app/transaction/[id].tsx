@@ -177,7 +177,7 @@ export default function TransactionScreen() {
         {txn.vpa && <Muted>UPI ID: {txn.vpa}</Muted>}
         {txn.upi_ref && <Muted>UPI ref: {txn.upi_ref}</Muted>}
         {txn.account_last4 && <Muted>Account: ••{txn.account_last4}</Muted>}
-        <Muted>Captured from: {txn.sources.split(',').map((s) => ({ sms: 'Bank SMS', notif: 'GPay notification', manual: 'Manual' })[s] ?? s).join(' + ')}</Muted>
+        <Muted>Captured from: {txn.sources.split(',').map((s) => ({ sms: 'Bank SMS', notif: 'GPay notification', screen: 'GPay screen', manual: 'Manual' })[s] ?? s).join(' + ')}</Muted>
         <Row style={{ justifyContent: 'space-between', marginTop: 4 }}>
           <View style={{ flex: 1 }}>
             <Body>Exclude from analytics</Body>

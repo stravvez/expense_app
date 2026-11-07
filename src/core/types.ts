@@ -1,5 +1,5 @@
 export type Direction = 'debit' | 'credit';
-export type CaptureSource = 'sms' | 'notif' | 'manual';
+export type CaptureSource = 'sms' | 'notif' | 'screen' | 'manual';
 
 /** Normalised result of parsing one SMS or notification. */
 export type ParsedTxn = {

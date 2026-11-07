@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="txn_capture_screen_label">Paisa Tracker – GPay payments</string>
+  <string name="txn_capture_screen_description">Reads only Google Pay\'s payment-successful and payment-details screens so Paisa Tracker can log the amount, name and UPI ID. It cannot see any other app, and nothing leaves your phone.</string>
+</resources>

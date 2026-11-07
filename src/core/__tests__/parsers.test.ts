@@ -8,6 +8,18 @@ const T = 1_762_400_000_000;
  * from your phone here — the Settings → "Needs review" screen shows any message that didn't parse.
  */
 describe('Union Bank SMS', () => {
+  it('parses the short "Dr ... by MB ... Fv." format', () => {
+    const r = parseBankSms('JK-UNIONB-S', 'Union Bank of India A/c*6790 Dr Rs900.00 on 05-11-26 13:35 by MB 630912345678 Fv.Redbu, Bal Rs974.65 Not U?Call 18002082244/SMS BLOCK 6790 to 9223008486', T);
+    expect(r.kind).toBe('txn');
+    if (r.kind !== 'txn') return;
+    expect(r.txn).toMatchObject({ amountPaise: 90000, direction: 'debit', upiRef: '630912345678', accountLast4: '6790', counterparty: 'Redbu', balancePaise: 97465 });
+  });
+  it('parses the "Debited ... Fvg:" format', () => {
+    const r = parseBankSms('JM-UNIONB-T', 'Union Bank of India A/c *6790 Debited Rs:50.00 on 31-10-2026 01:11:28 by Mob Bk ref no 630412345678, Fvg: CHANDA D Avl Bal Rs:2967.65. Not you?Call 18002082244/SMS BLOCK 6790 to 9223008486', T);
+    expect(r.kind).toBe('txn');
+    if (r.kind !== 'txn') return;
+    expect(r.txn).toMatchObject({ amountPaise: 5000, direction: 'debit', upiRef: '630412345678', counterparty: 'CHANDA D', balancePaise: 296765 });
+  });
   it('parses a UPI debit', () => {
     const r = parseBankSms(
       'AD-UNIONB',

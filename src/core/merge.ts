@@ -3,6 +3,9 @@ import type { ParsedTxn, TxnRow } from './types';
 /** An SMS and a GPay notification for the same payment arrive within this window. */
 export const MERGE_WINDOW_MS = 5 * 60 * 1000;
 
+/** Two reads of the same GPay screen within this window are one payment. */
+export const SCREEN_REPEAT_MS = 2 * 60 * 1000;
+
 export type MergeDecision =
   | { action: 'insert' }
   | { action: 'merge'; targetId: number; patch: Partial<TxnRow> }
@@ -23,6 +26,14 @@ export function decideMerge(p: ParsedTxn, candidates: TxnRow[]): MergeDecision {
     if (byRef) {
       return hasSource(byRef, p.source) ? { action: 'duplicate', targetId: byRef.id } : { action: 'merge', targetId: byRef.id, patch: patchFor(byRef, p) };
     }
+  }
+
+  // 2a. The GPay screen can be read twice for one payment (animation, re-opening it).
+  if (p.source === 'screen') {
+    const again = candidates.find(
+      (c) => hasSource(c, 'screen') && c.amount_paise === p.amountPaise && c.direction === p.direction && Math.abs(c.ts - p.ts) <= SCREEN_REPEAT_MS && !(c.upi_ref && p.upiRef && c.upi_ref !== p.upiRef)
+    );
+    if (again) return p.upiRef && !again.upi_ref ? { action: 'merge', targetId: again.id, patch: patchFor(again, p) } : { action: 'duplicate', targetId: again.id };
   }
 
   // 2. Cross-source match (SMS ↔ notification), same amount & direction, closest in time.
@@ -51,7 +62,7 @@ export function decideMerge(p: ParsedTxn, candidates: TxnRow[]): MergeDecision {
 function patchFor(row: TxnRow, p: ParsedTxn): Partial<TxnRow> {
   const patch: Partial<TxnRow> = { sources: [...new Set([...row.sources.split(',').filter(Boolean), p.source])].join(',') };
   // Notifications carry the human-readable name; SMS carry the ref/account. Prefer the notification's name.
-  if (p.counterparty && (p.source === 'notif' || !row.counterparty)) patch.counterparty = p.counterparty;
+  if (p.counterparty && (p.source === 'notif' || p.source === 'screen' || !row.counterparty)) patch.counterparty = p.counterparty;
   if (p.vpa && !row.vpa) patch.vpa = p.vpa;
   if (p.upiRef && !row.upi_ref) patch.upi_ref = p.upiRef;
   if (p.accountLast4 && !row.account_last4) patch.account_last4 = p.accountLast4;

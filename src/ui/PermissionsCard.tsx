@@ -64,6 +64,13 @@ export function PermissionsCard({ onChange }: { onChange?: (s: PermState) => voi
         onPress={() => TxnCapture?.openNotificationAccessSettings()}
       />
       <Step
+        done={s.screen}
+        title="Read GPay payment screens"
+        hint="Catches payments even when the bank SMS or notification never comes. Open → Installed apps → “Paisa Tracker – GPay payments” → On. It only sees Google Pay. Tip: open an old payment in GPay to add it."
+        action="Open"
+        onPress={() => TxnCapture?.openAccessibilitySettings()}
+      />
+      <Step
         done={s.battery}
         title="Run in background"
         hint="Stops Android from killing capture. On Xiaomi/Oppo/Vivo/Realme, also enable Autostart for this app."

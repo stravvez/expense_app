@@ -16,9 +16,11 @@ export const UNION_BANK_SENDER = /(UNION|UBOI|UBINB|UBIN)/i;
 const DLT_SENDER = /^[A-Z]{2}-[A-Z0-9]{3,9}(-[A-Z])?$/i;
 
 const AMOUNT = /(?:rs\.?|inr|₹)\s*[:.]?\s*([\d,]+(?:\.\d{1,2})?)/i;
-const BALANCE = /(?:avl\.?|available|avail\.?)\s*(?:bal(?:ance)?|bal\.?)\s*(?:is\s*)?(?:rs\.?|inr|₹)?\s*[:.]?\s*([\d,]+(?:\.\d{1,2})?)/i;
+const BALANCE = /(?:(?:avl\.?|available|avail\.?)\s*)?\b(?:bal(?:ance)?|bal\.?)\s*(?:is\s*)?(?:rs\.?|inr|₹)?\s*[:.]?\s*([\d,]+(?:\.\d{1,2})?)/i;
 const ACCOUNT = /(?:a\/c|acct|account|ac)\s*(?:no\.?)?\s*[:.]?\s*[x*X.]*\s*(\d{3,6})\b/i;
-const UPI_REF = /(?:upi\s*ref(?:erence)?|ref(?:erence)?|rrn|txn\s*id|utr)\s*(?:no\.?|number|id)?\s*[:.]?\s*(\d{9,16})/i;
+/** Union Bank names the payee as "Fv.Redbu" or "Fvg: CHANDA D" (favouring). */
+const FAVOURING = /\bfvg?\s*[.:]\s*([A-Za-z][A-Za-z0-9 .&'_-]{0,40}?)\s*(?=,|\bavl\b|\bbal\b|\bnot\b|$)/i;
+const UPI_REF = /(?:upi\s*ref(?:erence)?|ref(?:erence)?|rrn|txn\s*id|utr|\bby\s+mb)\s*(?:no\.?|number|id)?\s*[:.]?\s*(\d{9,16})/i;
 const VPA = /\b([a-z0-9][a-z0-9.\-_]{1,63}@[a-z][a-z0-9]{1,30})\b/i;
 
 const DEBIT = /\b(debited|debit(?:ed)?\s+(?:for|by|with)|withdrawn|spent|paid|sent|dr\.?)\b/i;
@@ -34,6 +36,8 @@ const IGNORE: [RegExp, string][] = [
 
 /** "to VPA x@y", "by Mr ABC", "from JOHN DOE" → counterparty text */
 function extractCounterparty(body: string, direction: Direction): string | undefined {
+  const fav = body.match(FAVOURING)?.[1]?.trim();
+  if (fav) return fav;
   const patterns =
     direction === 'debit'
       ? [/\b(?:to|towards|trf to|transfer to|paid to)\s+(?:vpa\s+)?([A-Za-z][A-Za-z0-9 .&'@_-]{1,40}?)(?=\s+(?:on|ref|upi|via|avl|thru|\.|$)|[.,]|$)/i]
