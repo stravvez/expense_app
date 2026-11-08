@@ -33,7 +33,9 @@ export default function AddTransaction() {
     await patchTxn(db, id, { note: note.trim() || null, category_source: 'user' });
     if (rawId) await setRawStatus(db, Number(rawId), 'txn', 'manual', id);
     bump();
-    router.back();
+    // opened from the widget on a cold start there is no screen underneath to go back to
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
   };
 
   return (

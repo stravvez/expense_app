@@ -2,6 +2,7 @@ import * as BackgroundTask from 'expo-background-task';
 import * as SQLite from 'expo-sqlite';
 import * as TaskManager from 'expo-task-manager';
 import { DB_NAME, migrate } from '../db/schema';
+import { refreshWidgetNow } from '../widget/refresh';
 import { drainNativeQueue } from './pipeline';
 
 /**
@@ -15,7 +16,8 @@ TaskManager.defineTask(DRAIN_TASK, async () => {
   try {
     const db = await SQLite.openDatabaseAsync(DB_NAME);
     await migrate(db);
-    await drainNativeQueue(db);
+    const stats = await drainNativeQueue(db);
+    if (stats) await refreshWidgetNow();
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch (e) {
     console.warn('background drain failed', e);

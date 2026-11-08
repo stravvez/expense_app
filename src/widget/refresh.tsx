@@ -23,8 +23,11 @@ export function refreshWidget() {
 export async function refreshWidgetNow() {
   if (Platform.OS !== 'android') return;
   try {
-    const data = await loadMonthSpend();
-    await requestWidgetUpdate({ widgetName: WIDGET_NAME, renderWidget: () => <MonthSpendWidget data={data} /> });
+    // renderWidget only runs when a widget is on the home screen, so the queries are skipped otherwise
+    await requestWidgetUpdate({
+      widgetName: WIDGET_NAME,
+      renderWidget: async () => <MonthSpendWidget data={await loadMonthSpend()} />,
+    });
   } catch (e) {
     console.warn('widget refresh failed', e);
   }

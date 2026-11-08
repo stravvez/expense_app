@@ -12,6 +12,7 @@ import { getMeta } from '../db/repo';
 import { DB_NAME, migrate } from '../db/schema';
 import { useApp } from '../state/store';
 import { useTheme } from '../ui/theme';
+import { refreshWidget } from '../widget/refresh';
 
 /** Keeps the app in sync with GPay: processes native captures live, on resume, and in background. */
 function CaptureBridge() {
@@ -47,6 +48,12 @@ function CaptureBridge() {
       if (typeof url === 'string') router.push(url as never);
     });
 
+    // keep the home-screen widget in step with every write the app makes
+    refreshWidget();
+    const unsubWidget = useApp.subscribe((s, prev) => {
+      if (s.dataVersion !== prev.dataVersion) refreshWidget();
+    });
+
     getMeta(db, 'onboarded').then((v) => {
       if (v !== '1') router.push('/onboarding');
     });
@@ -55,6 +62,7 @@ function CaptureBridge() {
       sub?.remove();
       app.remove();
       notif.remove();
+      unsubWidget();
       if (timer.current) clearTimeout(timer.current);
     };
   }, [db, bump]);

@@ -1,7 +1,7 @@
 {
   "name": "expense_app",
   "version": "1.0.0",
-  "main": "expo-router/entry",
+  "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "expo": "~58.0.23",
