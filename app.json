@@ -20,10 +20,6 @@
         "RECEIVE_SMS",
         "READ_SMS",
         "POST_NOTIFICATIONS",
-        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
-        "RECEIVE_SMS",
-        "READ_SMS",
-        "POST_NOTIFICATIONS",
         "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ]
     },
