@@ -16,11 +16,16 @@ export default function Transactions() {
   const db = useSQLiteContext();
   const t = useTheme();
   const nav = useNavigation();
-  const params = useLocalSearchParams<{ category?: string }>();
+  const params = useLocalSearchParams<{ category?: string; search?: string }>();
   const month = useApp((s) => s.month);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [allTime, setAllTime] = useState(false);
+  const [seenSearch, setSeenSearch] = useState<string | undefined>();
+  if (params.search !== seenSearch) {
+    setSeenSearch(params.search);
+    if (params.search) setSearch(params.search);
+  }
   const [seenParam, setSeenParam] = useState<string | undefined>();
   if (params.category !== seenParam) {
     setSeenParam(params.category);

@@ -1,4 +1,5 @@
 import { toPaise } from '../money';
+import { looksLikeRefund } from '../refunds';
 import type { ParseResult } from '../types';
 
 export const GPAY_PACKAGE = 'com.google.android.apps.nbu.paisa.user';
@@ -48,6 +49,7 @@ export function parsePaymentNotification(pkg: string, body: string, ts: number):
         ts,
         counterparty: name && !/^you$/i.test(name) ? name : undefined,
         vpa: name?.includes('@') ? name.toLowerCase() : undefined,
+        isRefund: p.dir === 'credit' && looksLikeRefund(text) ? true : undefined,
       },
     };
   }

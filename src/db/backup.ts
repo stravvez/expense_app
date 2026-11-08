@@ -21,7 +21,7 @@ export async function importBackup(db: SQLiteDatabase): Promise<boolean> {
   const res = await DocumentPicker.getDocumentAsync({ type: 'application/json', copyToCacheDirectory: true });
   if (res.canceled || !res.assets?.[0]) return false;
   const parsed = JSON.parse(await new File(res.assets[0].uri).text());
-  if (parsed?.app !== 'paisa-tracker' || !parsed.tables) throw new Error('Not a Paisa Tracker backup file');
+  if (parsed?.app !== 'paisa-tracker' || !parsed.tables) throw new Error('Not a UPI Diary backup file');
 
   await db.execAsync('PRAGMA foreign_keys = OFF');
   try {

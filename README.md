@@ -1,4 +1,4 @@
-# Paisa Tracker
+# UPI Diary
 
 Android app that tracks Google Pay spending **automatically**, with no imports. It reads the Union Bank
 SMS alert and the Google Pay notification that arrive with every UPI payment, merges the two into one

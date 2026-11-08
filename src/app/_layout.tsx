@@ -84,6 +84,7 @@ export default function RootLayout() {
         <Stack.Screen name="categories" options={{ title: 'Categories & budgets' }} />
         <Stack.Screen name="review" options={{ title: 'Needs review' }} />
         <Stack.Screen name="rules" options={{ title: 'Learned rules' }} />
+        <Stack.Screen name="recurring" options={{ title: 'Recurring payments' }} />
         <Stack.Screen name="onboarding" options={{ title: 'Set up auto-capture', presentation: 'modal' }} />
       </Stack>
     </SQLiteProvider>

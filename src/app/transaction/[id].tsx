@@ -14,6 +14,7 @@ import {
   listPeople,
   matchPerson,
   patchTxn,
+  setRefundOf,
   setTxnCategory,
   similarTxnIds,
 } from '../../db/repo';
@@ -34,7 +35,12 @@ export default function TransactionScreen() {
       'SELECT s.person_id, p.name FROM settlements s JOIN people p ON p.id = s.person_id WHERE s.transaction_id = ?',
       txnId
     );
-    return { txn, cats, split, people, settled };
+    const refundOf = txn?.refund_of ? await getTxn(db, txn.refund_of) : null;
+    const refundedBy = await db.getFirstAsync<{ id: number; amount_paise: number; ts: number }>(
+      'SELECT id, amount_paise, ts FROM transactions WHERE refund_of = ?',
+      txnId
+    );
+    return { txn, cats, split, people, settled, refundOf, refundedBy };
   }, [txnId]);
 
   const [note, setNote] = useState('');
@@ -47,8 +53,10 @@ export default function TransactionScreen() {
   }
 
   if (!data) return null;
-  const { txn, cats, split, people, settled } = data;
+  const { txn, cats, split, people, settled, refundOf, refundedBy } = data;
   if (!txn) return <Muted style={{ padding: space.lg }}>Transaction not found.</Muted>;
+  const moneyMoved = txn.category_kind === 'self' || txn.category_kind === 'investment';
+  const creditKinds = cats.filter((c) => c.kind === 'self' || c.kind === 'investment');
 
   const pickCategory = async (catId: number) => {
     const similar = await similarTxnIds(db, txn, catId);
@@ -103,6 +111,46 @@ export default function TransactionScreen() {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
             {cats.map((c) => (
               <Chip key={c.id} label={`${c.icon} ${c.name}`} selected={txn.category_id === c.id} onPress={() => pickCategory(c.id)} />
+            ))}
+          </View>
+          {moneyMoved && <Muted>Money moved, not spent: this isn’t counted in your spending.</Muted>}
+          {refundedBy && (
+            <Text style={{ color: t.success, fontSize: 13 }} onPress={() => router.push(`/transaction/${refundedBy.id}`)}>
+              ↩ {formatINR(refundedBy.amount_paise)} refunded on {formatDateTime(refundedBy.ts)} ›
+            </Text>
+          )}
+        </Card>
+      )}
+
+      {txn.direction === 'credit' && refundOf && (
+        <Card>
+          <Title>Refund</Title>
+          <Muted>
+            Pays back {refundOf.counterparty ?? refundOf.vpa ?? 'a payment'} · {formatINR(refundOf.amount_paise)} on {formatDateTime(refundOf.ts)}. It reduces
+            that month’s spending instead of counting as income.
+          </Muted>
+          <Row>
+            <Button title="Open payment" kind="secondary" style={{ flex: 1 }} onPress={() => router.push(`/transaction/${refundOf.id}`)} />
+            <Button
+              title="Not a refund"
+              kind="ghost"
+              onPress={async () => {
+                await setRefundOf(db, txn.id, null);
+                bump();
+              }}
+            />
+          </Row>
+        </Card>
+      )}
+
+      {txn.direction === 'credit' && !refundOf && !settled && (
+        <Card>
+          <Title>Type</Title>
+          <Muted>Money from your own account or from selling investments isn’t income.</Muted>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            <Chip label="💰 Income" selected={txn.category_id == null} onPress={() => setTxnCategory(db, txn, null).then(bump)} />
+            {creditKinds.map((c) => (
+              <Chip key={c.id} label={`${c.icon} ${c.name}`} selected={txn.category_id === c.id} onPress={() => setTxnCategory(db, txn, c.id).then(bump)} />
             ))}
           </View>
         </Card>

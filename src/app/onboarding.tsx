@@ -39,7 +39,7 @@ export default function Onboarding() {
       <Card>
         <Title style={{ fontSize: 20 }}>Track GPay automatically</Title>
         <Body>
-          Google Pay doesn’t share your history with other apps, so Paisa Tracker reads the two things your phone already gets for every payment: Union Bank’s
+          Google Pay doesn’t share your history with other apps, so UPI Diary reads what your phone already gets for every payment: Union Bank’s
           SMS alert and Google Pay’s notification. Everything stays on this phone.
         </Body>
       </Card>

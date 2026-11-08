@@ -2,7 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { DEFAULT_CATEGORIES, DEFAULT_KEYWORDS } from '../core/categorize';
 
 export const DB_NAME = 'paisa.db';
-const LATEST = 1;
+const LATEST = 2;
 
 export async function migrate(db: SQLiteDatabase) {
   await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
@@ -117,6 +117,33 @@ export async function migrate(db: SQLiteDatabase) {
       }
     });
     v = 1;
+  }
+
+  if (v === 1) {
+    // v2: category kinds (investments / self-transfers are not spending) and refund links.
+    await db.withTransactionAsync(async () => {
+      await db.execAsync(`
+        ALTER TABLE categories ADD COLUMN kind TEXT NOT NULL DEFAULT 'spend';
+        ALTER TABLE transactions ADD COLUMN refund_of INTEGER REFERENCES transactions(id) ON DELETE SET NULL;
+        CREATE INDEX IF NOT EXISTS idx_tx_refund ON transactions(refund_of);
+      `);
+      const maxSort = (await db.getFirstAsync<{ m: number }>('SELECT COALESCE(MAX(sort), 0) AS m FROM categories'))?.m ?? 0;
+      for (const [i, c] of DEFAULT_CATEGORIES.entries()) {
+        if (!c.kind || c.kind === 'spend') continue;
+        await db.runAsync('INSERT OR IGNORE INTO categories (key, name, icon, color, sort) VALUES (?, ?, ?, ?, ?)', c.key, c.name, c.icon, c.color, maxSort + i + 1);
+        await db.runAsync('UPDATE categories SET kind = ? WHERE key = ?', c.kind, c.key);
+      }
+      const cats = await db.getAllAsync<{ id: number; key: string }>('SELECT id, key FROM categories');
+      const byKey = new Map(cats.map((c) => [c.key, c.id]));
+      for (const [key, words] of Object.entries(DEFAULT_KEYWORDS)) {
+        const cid = byKey.get(key);
+        if (!cid) continue;
+        for (const w of words) {
+          await db.runAsync("INSERT OR IGNORE INTO merchant_rules (match_type, pattern, category_id, origin) VALUES ('keyword', ?, ?, 'default')", w.trim(), cid);
+        }
+      }
+    });
+    v = 2;
   }
 
   await db.execAsync(`PRAGMA user_version = ${LATEST}`);

@@ -12,6 +12,8 @@ export type ParsedTxn = {
   upiRef?: string;
   accountLast4?: string;
   balancePaise?: number;
+  /** credit described as a refund / reversal of an earlier payment */
+  isRefund?: boolean;
 };
 
 export type ParseResult =
@@ -35,4 +37,6 @@ export type TxnRow = {
   note: string | null;
   sources: string;
   excluded: number;
+  /** for a refund credit: the debit it pays back */
+  refund_of?: number | null;
 };

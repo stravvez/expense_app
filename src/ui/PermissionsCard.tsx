@@ -59,14 +59,14 @@ export function PermissionsCard({ onChange }: { onChange?: (s: PermState) => voi
       <Step
         done={s.notifAccess}
         title="Read Google Pay notifications"
-        hint="Adds the merchant or person name. In the list, find “Paisa Tracker” and switch it on."
+        hint="Adds the merchant or person name. In the list, find “UPI Diary” and switch it on."
         action="Open"
         onPress={() => TxnCapture?.openNotificationAccessSettings()}
       />
       <Step
         done={s.screen}
         title="Read GPay payment screens"
-        hint="Catches payments even when the bank SMS or notification never comes. Open → Installed apps → “Paisa Tracker – GPay payments” → On. It only sees Google Pay. Tip: open an old payment in GPay to add it."
+        hint="Catches payments even when the bank SMS or notification never comes. Open → Installed apps → “UPI Diary – GPay payments” → On. It only sees Google Pay. Tip: open an old payment in GPay to add it."
         action="Open"
         onPress={() => TxnCapture?.openAccessibilitySettings()}
       />

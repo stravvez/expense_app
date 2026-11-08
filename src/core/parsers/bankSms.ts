@@ -1,4 +1,5 @@
 import { toPaise } from '../money';
+import { looksLikeRefund } from '../refunds';
 import type { Direction, ParseResult } from '../types';
 
 /**
@@ -66,7 +67,13 @@ export function parseBankSms(sender: string, body: string, ts: number): ParseRes
   // Banks append safety footers like "Never Share OTP/PIN/CVV" to real alerts; don't let them
   // trip the OTP/promo filters.
   const screened = text.replace(SAFETY_FOOTER, ' ');
-  for (const [re, reason] of IGNORE) if (re.test(screened)) return { kind: 'ignored', reason };
+  // A credit that reverses a failed payment ("credited ... reversal of failed txn") is real money
+  // back, so the "failed" filter must not drop it.
+  const refundCredit = looksLikeRefund(screened) && CREDIT.test(screened);
+  for (const [re, reason] of IGNORE) {
+    if (reason === 'failed' && refundCredit) continue;
+    if (re.test(screened)) return { kind: 'ignored', reason };
+  }
 
   const amt = text.match(AMOUNT);
   const isDebit = DEBIT.test(text);
@@ -108,6 +115,7 @@ export function parseBankSms(sender: string, body: string, ts: number): ParseRes
       balancePaise: bal ? toPaise(bal) : undefined,
       vpa,
       counterparty: counterparty && !counterparty.includes('@') ? counterparty : undefined,
+      isRefund: direction === 'credit' && looksLikeRefund(screened) ? true : undefined,
     },
   };
 }

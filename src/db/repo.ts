@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { learnKey, normalizeParty, type RuleRow } from '../core/categorize';
+import { learnKey, normalizeParty, type CategoryKind, type RuleRow } from '../core/categorize';
+import { REFUND_WINDOW_MS } from '../core/refunds';
 import { MERGE_WINDOW_MS } from '../core/merge';
 import type { PartyId, Share, SplitMode, SplitRecord, SettlementRecord } from '../core/splits';
 import type { ParsedTxn, TxnRow } from '../core/types';
@@ -15,7 +16,7 @@ export async function setMeta(db: SQLiteDatabase, key: string, value: string) {
 
 /* ---------------------------------------------------------- categories */
 
-export type Category = { id: number; key: string | null; name: string; icon: string; color: string; budget_paise: number; sort: number };
+export type Category = { id: number; key: string | null; name: string; icon: string; color: string; budget_paise: number; sort: number; kind: CategoryKind };
 
 export function listCategories(db: SQLiteDatabase) {
   return db.getAllAsync<Category>('SELECT * FROM categories ORDER BY sort, id');
@@ -51,10 +52,10 @@ export async function deleteRule(db: SQLiteDatabase, id: number) {
 
 /* -------------------------------------------------------- transactions */
 
-export type TxnView = TxnRow & { category_name: string | null; category_icon: string | null; category_color: string | null; my_share_paise: number; has_split: number };
+export type TxnView = TxnRow & { category_kind: CategoryKind | null; category_name: string | null; category_icon: string | null; category_color: string | null; my_share_paise: number; has_split: number };
 
 const TXN_SELECT = `
-  SELECT t.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color,
+  SELECT t.*, c.name AS category_name, c.icon AS category_icon, c.color AS category_color, c.kind AS category_kind,
          CASE WHEN s.id IS NULL THEN t.amount_paise
               ELSE COALESCE((SELECT share_paise FROM split_shares WHERE split_id = s.id AND person_id IS NULL), 0) END AS my_share_paise,
          CASE WHEN s.id IS NULL THEN 0 ELSE 1 END AS has_split
@@ -287,5 +288,88 @@ export function unlinkedCredits(db: SQLiteDatabase, limit = 30) {
        AND NOT EXISTS (SELECT 1 FROM settlements st WHERE st.transaction_id = t.id)
      ORDER BY t.ts DESC LIMIT ?`,
     limit
+  );
+}
+
+/* ------------------------------------------------- names, refunds, self */
+
+/** "Redbu" (cut short by the bank SMS) → "Redbus" from an earlier GPay notification/screen. */
+export async function resolveFullName(db: SQLiteDatabase, short: string): Promise<string | null> {
+  const key = short.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (key.length < 3) return null;
+  const rows = await db.getAllAsync<{ counterparty: string }>(
+    `SELECT counterparty FROM transactions
+     WHERE counterparty IS NOT NULL AND LENGTH(counterparty) > ?
+       AND (sources LIKE '%notif%' OR sources LIKE '%screen%' OR sources LIKE '%manual%')
+     ORDER BY ts DESC LIMIT 2000`,
+    short.length
+  );
+  return rows.find((r) => r.counterparty.toLowerCase().replace(/[^a-z0-9]/g, '').startsWith(key))?.counterparty ?? null;
+}
+
+/** Debits a refund could point to: earlier, within the window, not already refunded. */
+export function refundCandidates(db: SQLiteDatabase, p: Pick<ParsedTxn, 'ts'>) {
+  return db.getAllAsync<TxnRow>(
+    `SELECT * FROM transactions t
+     WHERE direction = 'debit' AND ts BETWEEN ? AND ?
+       AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.refund_of = t.id)
+     ORDER BY ts DESC LIMIT 300`,
+    p.ts - REFUND_WINDOW_MS,
+    p.ts
+  );
+}
+
+export async function setRefundOf(db: SQLiteDatabase, refundId: number, debitId: number | null) {
+  await db.runAsync('UPDATE transactions SET refund_of = ? WHERE id = ?', debitId, refundId);
+}
+
+export async function categoryKinds(db: SQLiteDatabase): Promise<Map<number, CategoryKind>> {
+  const rows = await db.getAllAsync<{ id: number; kind: CategoryKind }>('SELECT id, kind FROM categories');
+  return new Map(rows.map((r) => [r.id, r.kind]));
+}
+
+/**
+ * Your own names / UPI IDs. Payments to or from these are self-transfers (not spending, not income).
+ * Stored in meta and mirrored as learned exact rules pointing at the Self-transfer category.
+ */
+export async function getSelfIds(db: SQLiteDatabase): Promise<string[]> {
+  const v = await getMeta(db, 'self_ids');
+  return v ? v.split('\n').map((s) => s.trim()).filter(Boolean) : [];
+}
+
+export async function setSelfIds(db: SQLiteDatabase, ids: string[]) {
+  const clean = [...new Set(ids.map((s) => s.trim()).filter(Boolean))];
+  const self = await db.getFirstAsync<{ id: number }>("SELECT id FROM categories WHERE key = 'self'");
+  const old = await getSelfIds(db);
+  await db.withTransactionAsync(async () => {
+    if (self) {
+      for (const o of old) {
+        const k = normalizeParty(o);
+        if (k) await db.runAsync("DELETE FROM merchant_rules WHERE match_type = 'exact' AND pattern = ? AND category_id = ?", k, self.id);
+      }
+      for (const n of clean) {
+        const k = normalizeParty(n);
+        if (!k) continue;
+        await db.runAsync(
+          `INSERT INTO merchant_rules (match_type, pattern, category_id, origin) VALUES ('exact', ?, ?, 'learned')
+           ON CONFLICT(match_type, pattern) DO UPDATE SET category_id = excluded.category_id, origin = 'learned'`,
+          k,
+          self.id
+        );
+      }
+    }
+    await setMeta(db, 'self_ids', clean.join('\n'));
+  });
+}
+
+/** Debits of the last ~13 months for recurring-payment detection (spend + investments). */
+export function recurringRows(db: SQLiteDatabase, since: number) {
+  return db.getAllAsync<{ ts: number; amount: number; counterparty: string | null; vpa: string | null; category_id: number | null }>(
+    `SELECT t.ts, t.amount_paise AS amount, t.counterparty, t.vpa, t.category_id
+     FROM transactions t LEFT JOIN categories c ON c.id = t.category_id
+     WHERE t.direction = 'debit' AND t.excluded = 0 AND t.ts >= ? AND COALESCE(c.kind, 'spend') != 'self'
+       AND NOT EXISTS (SELECT 1 FROM transactions r WHERE r.refund_of = t.id)
+     ORDER BY t.ts`,
+    since
   );
 }

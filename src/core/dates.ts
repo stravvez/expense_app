@@ -42,3 +42,11 @@ export function formatTime(ts: number) {
   const h = d.getHours();
   return `${((h + 11) % 12) + 1}:${String(d.getMinutes()).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
+
+/** "today", "in 3 days", "2 days late" */
+export function dueLabel(ts: number, now: number) {
+  const d = Math.round((ts - now) / (24 * 60 * 60 * 1000));
+  if (d === 0) return 'due today';
+  if (d > 0) return d === 1 ? 'due tomorrow' : `in ${d} days`;
+  return `${-d} day${d === -1 ? '' : 's'} late`;
+}

@@ -1,4 +1,6 @@
-export type DefaultCategory = { key: string; name: string; icon: string; color: string };
+/** spend = counts as spending; investment / self = money moved, not spent (kept out of spend totals) */
+export type CategoryKind = "spend" | "investment" | "self";
+export type DefaultCategory = { key: string; name: string; icon: string; color: string; kind?: CategoryKind };
 
 /** Seeded on first run. `key` is stable; names can be renamed by the user. */
 export const DEFAULT_CATEGORIES: DefaultCategory[] = [
@@ -14,6 +16,8 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = [
   { key: 'rent', name: 'Rent & Home', icon: '🏠', color: '#8a8984' },
   { key: 'transfers', name: 'Transfers to people', icon: '👥', color: '#8a8984' },
   { key: 'other', name: 'Other', icon: '📦', color: '#8a8984' },
+  { key: 'investments', name: 'Investments', icon: '📈', color: '#8a8984', kind: 'investment' },
+  { key: 'self', name: 'Self-transfer', icon: '🔁', color: '#8a8984', kind: 'self' },
 ];
 
 /** keyword (matched against normalised counterparty + vpa) → category key */
@@ -27,6 +31,8 @@ export const DEFAULT_KEYWORDS: Record<string, string[]> = {
   health: ['apollo', 'pharmeasy', 'netmeds', '1mg', 'tata 1mg', 'medplus', 'pharmacy', 'medical', 'chemist', 'hospital', 'clinic', 'diagnostic', 'lab', 'practo', 'cult', 'gym', 'fitness'],
   education: ['udemy', 'coursera', 'byju', 'unacademy', 'college', 'university', 'school', 'tuition', 'books', 'stationery', 'exam', 'fees', 'bits'],
   travel: ['makemytrip', 'goibibo', 'cleartrip', 'yatra', 'ixigo', 'airbnb', 'oyo', 'hotel', 'indigo', 'air india', 'vistara', 'akasa', 'spicejet'],
+  investments: ['sip', 'nach', 'mutual fund', 'zerodha', 'groww', 'upstox', 'indmoney', 'paytm money', 'kuvera', 'smallcase', 'etmoney', 'angel one', 'hdfcmf', 'hdfc mf', 'sbi mf', 'icici pru', 'nippon', 'bse star', 'kfintech', 'nps', 'ppf', 'recurring deposit'],
+  self: ['self', 'own account', 'self transfer'],
   rent: ['rent', 'nobroker', 'nestaway', 'housing', 'maintenance', 'society', 'pg ', 'hostel'],
 };
 
@@ -50,10 +56,34 @@ export type RuleRow = { match_type: 'exact' | 'keyword'; pattern: string; catego
  * Precedence: learned exact (counterparty, then vpa) → learned keyword → default keyword.
  * Returns null → Uncategorised.
  */
+/**
+ * Union Bank SMS cut the payee to ~5–8 characters ("Fv.Redbu", "Fvg: CHANDA D").
+ * Such names only make sense as a prefix of the real name.
+ */
+export function isTruncatedName(name: string | null | undefined): boolean {
+  const n = (name ?? '').trim();
+  return n.length >= 3 && n.length <= 8 && !n.includes('@');
+}
+
 export function categorize(
-  input: { counterparty?: string | null; vpa?: string | null },
+  input: { counterparty?: string | null; vpa?: string | null; truncated?: boolean },
   rules: RuleRow[]
 ): number | null {
+  const direct = categorizeDirect(input, rules);
+  if (direct != null || !input.truncated) return direct;
+
+  // Truncated payee: "redbu" → learned/default pattern that starts with it ("redbus").
+  const short = normalizeParty(input.counterparty).replace(/\s+/g, '');
+  if (short.length < 4) return null;
+  const rank = (r: RuleRow) => (r.origin === 'learned' ? 0 : 2) + (r.match_type === 'exact' ? 0 : 1);
+  const hit = rules
+    .map((r) => ({ r, p: r.pattern.toLowerCase().replace(/[^a-z0-9]/g, '') }))
+    .filter(({ p }) => p.length > short.length && p.startsWith(short))
+    .sort((a, b) => rank(a.r) - rank(b.r) || a.p.length - b.p.length)[0];
+  return hit?.r.category_id ?? null;
+}
+
+function categorizeDirect(input: { counterparty?: string | null; vpa?: string | null }, rules: RuleRow[]): number | null {
   const cp = normalizeParty(input.counterparty);
   const vp = normalizeParty(input.vpa);
   const keys = [cp, vp].filter(Boolean);

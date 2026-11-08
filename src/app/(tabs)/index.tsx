@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { BarChart, PieChart } from 'react-native-gifted-charts';
 import TxnCapture from '../../../modules/txn-capture';
-import { addMonths, daysInMonth, monthLabel, monthRange } from '../../core/dates';
+import { addMonths, daysInMonth, dueLabel, monthLabel, monthRange } from '../../core/dates';
 import { formatINR, formatINRCompact } from '../../core/money';
 import { computeBalances } from '../../core/splits';
 import { monthSummary, spendByCategory, spendRows, topMerchants } from '../../db/analytics';
-import { allSettlements, allSplitRecords, countRaw } from '../../db/repo';
+import { detectRecurring } from '../../core/recurring';
+import { allSettlements, allSplitRecords, countRaw, recurringRows } from '../../db/repo';
 import { useApp } from '../../state/store';
 import { Body, Card, Muted, ProgressBar, Row, Title, useData } from '../../ui/components';
 import { OTHER_COLOR, space, useSeriesColor, useTheme } from '../../ui/theme';
@@ -27,7 +28,8 @@ export default function Dashboard() {
     const [from, to] = monthRange(month);
     const [prevFrom] = monthRange(addMonths(month, -1));
     const trendFrom = addMonths(month, -5).getTime();
-    const [summary, prev, cats, rows, trendRows, merchants, splits, settlements, review] = await Promise.all([
+    const now = Date.now();
+    const [summary, prev, cats, rows, trendRows, merchants, splits, settlements, review, recRows] = await Promise.all([
       monthSummary(db, from, to),
       monthSummary(db, prevFrom, from),
       spendByCategory(db, from, to),
@@ -37,7 +39,9 @@ export default function Dashboard() {
       allSplitRecords(db),
       allSettlements(db),
       countRaw(db, 'unparsed'),
+      recurringRows(db, now - 400 * 24 * 60 * 60 * 1000),
     ]);
+    const recurring = detectRecurring(recRows, now);
     const balances = [...computeBalances(splits, settlements).values()];
     const owedToMe = balances.filter((b) => b > 0).reduce((a, b) => a + b, 0);
     const iOwe = -balances.filter((b) => b < 0).reduce((a, b) => a + b, 0);
@@ -51,14 +55,16 @@ export default function Dashboard() {
       const idx = months.findIndex((x) => x.m.getFullYear() === d.getFullYear() && x.m.getMonth() === d.getMonth());
       if (idx >= 0) months[idx].v += r.amount;
     }
-    return { summary, prev, cats, days, months, merchants, owedToMe, iOwe, review, isCurrentMonth: to > Date.now() };
+    return { summary, prev, cats, days, months, merchants, owedToMe, iOwe, review, isCurrentMonth: to > now, recurring, now };
   }, [month]);
 
   const captureOn = TxnCapture ? TxnCapture.isNotificationAccessGranted() : false;
   const chartW = width - space.lg * 2 - space.lg * 2;
 
   if (!data) return <View style={{ flex: 1, backgroundColor: t.bg }} />;
-  const { summary, prev, cats, days, months, merchants, owedToMe, iOwe, review, isCurrentMonth } = data;
+  const { summary, prev, cats, days, months, merchants, owedToMe, iOwe, review, isCurrentMonth, recurring, now } = data;
+  const recurringMonthly = recurring.reduce((a, r) => a + r.monthly, 0);
+  const upcoming = recurring.filter((r) => r.nextTs >= now - 2 * 24 * 60 * 60 * 1000).slice(0, 3);
   const delta = prev.spent ? (summary.spent - prev.spent) / prev.spent : null;
 
   // Donut: categories with a palette hue get their own slice; gray-palette ones + uncategorised fold into "Other".
@@ -105,7 +111,33 @@ export default function Dashboard() {
           {summary.count} expenses
           {delta != null ? ` · ${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta * 100).toFixed(0)}% vs ${monthLabel(addMonths(month, -1))}` : ''}
         </Muted>
+        {(summary.invested > 0 || summary.refunded > 0) && (
+          <Muted>
+            {[summary.invested > 0 && `${formatINR(summary.invested, { decimals: false })} invested (not counted)`, summary.refunded > 0 && `${formatINR(summary.refunded, { decimals: false })} refunded`]
+              .filter(Boolean)
+              .join(' · ')}
+          </Muted>
+        )}
       </Card>
+
+      {recurring.length > 0 && (
+        <Card onPress={() => router.push('/recurring')}>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Title>Recurring payments</Title>
+            <Muted>{formatINR(recurringMonthly, { decimals: false })}/mo ›</Muted>
+          </Row>
+          {upcoming.map((r) => (
+            <Row key={r.key} style={{ justifyContent: 'space-between' }}>
+              <Body numberOfLines={1} style={{ flex: 1 }}>
+                {r.name}
+              </Body>
+              <Muted>
+                {formatINR(r.amount, { decimals: false })} · {dueLabel(r.nextTs, now)}
+              </Muted>
+            </Row>
+          ))}
+        </Card>
+      )}
 
       <Row style={{ alignItems: 'stretch' }}>
         <Card style={{ flex: 1 }}>

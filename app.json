@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Paisa Tracker",
+    "name": "UPI Diary",
     "slug": "paisa-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "ios": {},
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#5B3FD9",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -17,6 +17,10 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.pushk.paisatracker",
       "permissions": [
+        "RECEIVE_SMS",
+        "READ_SMS",
+        "POST_NOTIFICATIONS",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "RECEIVE_SMS",
         "READ_SMS",
         "POST_NOTIFICATIONS",
@@ -43,10 +47,34 @@
           "android": {
             "enableMinifyInReleaseBuilds": false,
             "enableShrinkResourcesInReleaseBuilds": false,
-            "extraProguardRules": "-keep class androidx.work.** { *; }\n-keep class * extends androidx.room.RoomDatabase { <init>(); }\n-keep class expo.modules.txncapture.** { *; }"
+            "extraProguardRules": "-keep class androidx.work.** { *; }\n-keep class * extends androidx.room.RoomDatabase { <init>(); }\n-keep class expo.modules.txncapture.** { *; }",
+            "buildArchs": [
+              "arm64-v8a"
+            ]
           }
         }
-      ]
+      ],
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "MonthSpend",
+              "label": "UPI Diary – this month",
+              "description": "This month’s spending, with a quick “add cash expense” button",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "widgetCategory": "home_screen",
+              "previewImage": "./assets/widget-preview.png",
+              "updatePeriodMillis": 1800000
+            }
+          ]
+        }
+      ],
+      "expo-updates"
     ],
     "scheme": "paisatracker",
     "experiments": {
@@ -61,6 +89,14 @@
       "eas": {
         "projectId": "7b90c3c8-75da-45c5-9a92-8723516eb7fa"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7b90c3c8-75da-45c5-9a92-8723516eb7fa",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "fingerprint"
     }
   }
 }
