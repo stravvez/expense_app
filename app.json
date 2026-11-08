@@ -74,7 +74,8 @@
           ]
         }
       ],
-      "expo-updates"
+      "expo-updates",
+      "expo-font"
     ],
     "scheme": "paisatracker",
     "experiments": {
